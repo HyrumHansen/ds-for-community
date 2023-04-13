@@ -61,5 +61,38 @@ dev.off()
 
 Over the next 12 months, the model estimates SNAC will see an average of `r format(floor(sum(mydata_forecast$mean[(1:12)])/12), scientific=FALSE)` unduplicated patrons per month. During the previous 12-month cycle SNAC assisted an average of `r format(floor(sum(tail(ts_data,12)[(1:12)])/12), scientific=FALSE)` unique students per month. The previous 12 months saw `r format(floor(sum(tail(ts_data,24)[(1:12)])/12), scientific=FALSE)` unique students per month.
 
+## Simple Regression Setting
+
+To answer the question: How many unduplicated individuals/households does your agency plan to serve in the coming year with this funding? we will build a simple linear regression model. The model will use the number of unique patrons per month to predict the number of unique patrons per year. I suspect near perfect correlation between these variables so we should be able to get a reasonable estimate. 
+
+Note that the data collected for the current academic year was incomplete. The value used for the September 2022 through March 2023 was an extrapolation that assumed decaying growth in the number of unique patrons per year (a more precise estimate can be calculated if necessary). The calculation was 
+
+$$Y = \dfrac{3041}{7}*5*0.7$$
+where 3041 is the number of unique patrons *so far* this academic year, and 5 is the number of months we don't yet have data for. 0.7 is the decay factor.
+
+The linear model was fit on just 6 data points, but $R^2 = 0.94$ and a highly significant p-value corroborates suspected high-correlation.
+
+
+```{r, include=FALSE}
+# Response variable is the number of unique patrons in an academic year
+y <- c(671, 1893, 2010, 1605, 1997, 3041 + (3041/7)*5*0.7)
+
+
+# Predictor variable is the average number of unique patrons per month for a given academic year
+x <- c(
+  sum(ts_data[1:12])/12,
+  sum(ts_data[13:24])/12,
+  sum(ts_data[25:36])/12,
+  sum(ts_data[37:48])/12,
+  sum(ts_data[49:60])/12,
+  (sum(ts_data[61:67]) + sum(mydata_forecast$mean[1:5]))/12
+)
+
+lm_dat <- list(data.frame(y, x))
+reg_model <- lm(y~x, lm_dat)
+
+newdata <- data.frame(x=c(sum(mydata_forecast$mean[6:17])/12))
+```
+For the upcoming academic year, the time series model predicted that SNAC will serve an average of `r floor(sum(mydata_forecast$mean[6:17])/12)`. Taking this value as input to our model, SNAC should expect to see `r floor(predict(reg_model, newdata))` unique visitors for the upcoming academic year.
 
 
