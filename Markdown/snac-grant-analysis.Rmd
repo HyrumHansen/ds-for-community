@@ -1,0 +1,65 @@
+---
+title: "SNAC Forecast"
+author: "Hyrum Hansen"
+date: '2023-04-13'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(ggfortify)
+library(ggthemes)
+library(forecast)
+```
+
+## Introduction
+
+This analysis aims to predict the number of patrons SNAC will have next year. We begin with preliminary visualizations, then build a time series model to project unique visitations for the next year. 
+
+## Data Visualization
+
+```{r, include=FALSE}
+data <- read.csv("../data/ts_data.csv")
+ts_data <- ts(data['Unduplicated.Individuals'],
+              start=c(2017, 9), end=c(2023, 3), frequency=12)
+
+cursory_plot <- autoplot(ts_data, ts.colour = 'red',) + 
+  labs(title="\nUnique Snac Patrons Per Month\n") +
+  xlab("\nYear\n") + 
+  ylab("\n# of Unique Patrons\n")
+  
+png(file="figures/cursory_plot.png", width=800, height=500)
+cursory_plot
+dev.off()
+```
+
+SNAC has seen a significant rise in the number of unique patrons visiting on a monthly basis.
+
+![A popularity surge beginning in September 2022 reflects growing student demand for SNAC](figures\cursory_plot.png)
+
+\newpage
+
+## SARIMA Model
+
+A seasonal auto-regressive moving average model was fit to predict the number of SNAC patrons we should expect to see over the next 12 months. ARIMA models are the most common class of statistical model for forecasting demand. These models assume a time-dependence structure in the data. In other words, information from predictions made on known data (at time $t$, for example) can be used to make predictions about measurements at time $t+1$.
+
+```{r, include=FALSE}
+snac_arima <- auto.arima(ts_data)
+mydata_forecast <- forecast(snac_arima, h=17)
+projection_plot <- autoplot(mydata_forecast, showgap = FALSE)+ 
+  labs(title="\nForecasted SNAC Patrons by Month\n") +
+  xlab("\nYear\n") + 
+  ylab("\n# of Unique Patrons\n")
+  theme_hc()
+png(file="figures/projection_plot.png", width=800, height=500)
+projection_plot
+dev.off()
+```
+
+![Prediction intervals are wide indicating some uncertainty in the model, but even the low end of the interval suggests that the increased demand is here to stay.](figures\projection_plot.png)
+
+Over the next 12 months, the model estimates SNAC will see an average of `r format(floor(sum(mydata_forecast$mean[(1:12)])/12), scientific=FALSE)` unduplicated patrons per month. During the previous 12-month cycle SNAC assisted an average of `r format(floor(sum(tail(ts_data,12)[(1:12)])/12), scientific=FALSE)` unique students per month. The previous 12 months saw `r format(floor(sum(tail(ts_data,24)[(1:12)])/12), scientific=FALSE)` unique students per month.
+
+
+
